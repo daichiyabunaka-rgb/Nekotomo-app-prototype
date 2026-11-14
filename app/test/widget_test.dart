@@ -89,32 +89,40 @@ void main() {
     });
   });
 
-  group('近くの猫スポット（ニーアキャット特別機能）', () {
+  group('近くの施設（ニーアキャット特別機能）', () {
     // 東京駅（35.6812, 139.7671）を現在地としたOverpassレスポンスの例
     const overpassJson = '''
 {
   "version": 0.6, "generator": "Overpass API",
   "elements": [
     {"type": "node", "id": 201, "lat": 35.70, "lon": 139.78,
-     "tags": {"amenity": "cafe", "name": "A ねこカフェ丸の内"}},
+     "tags": {"leisure": "park", "name": "A 中央公園"}},
     {"type": "way", "id": 203,
      "center": {"lat": 35.67, "lon": 139.76},
-     "tags": {"shop": "pet", "name": "C ペットショップこねこ堂"}},
+     "tags": {"amenity": "animal_shelter", "name": "C どうぶつ愛護センター"}},
     {"type": "node", "id": 204, "lat": 35.66, "lon": 139.75,
-     "tags": {"amenity": "veterinary", "name": "D あいぶき動物病院"}},
+     "tags": {"office": "ngo", "name": "D ねこがえるNPO"}},
     {"type": "node", "id": 205, "lat": 35.68, "lon": 139.77,
-     "tags": {"amenity": "cafe"}}
+     "tags": {"leisure": "park"}},
+    {"type": "node", "id": 206, "lat": 35.69, "lon": 139.77,
+     "tags": {"amenity": "cafe", "name": "B ねこカフェ丸の内"}},
+    {"type": "node", "id": 207, "lat": 35.69, "lon": 139.78,
+     "tags": {"amenity": "veterinary", "name": "E あいぶき動物病院"}}
   ]
-}''';
+}
+''';
 
-    test('実在データのパース: ねこカフェ・ペットショップ・動物病院を種別判定する', () {
+    test('実在データのパース: 公園・動物愛護施設・動物関連NPOを種別判定する', () {
       final spots = parseOverpassResponse(overpassJson, 35.6812, 139.7671);
       final names = spots.map((s) => s.name).toList();
-      expect(names, contains('A ねこカフェ丸の内')); // amenity=cafe → ねこカフェ
-      expect(names, contains('C ペットショップこねこ堂')); // shop=pet
-      expect(names, contains('D あいぶき動物病院')); // amenity=veterinary
-      // 名前のない施設は表示しない
-      expect(spots.any((s) => s.name.isEmpty), isFalse);
+      expect(names, contains('A 中央公園')); // leisure=park → 公園
+      expect(names, contains('C どうぶつ愛護センター')); // amenity=animal_shelter
+      expect(names, contains('D ねこがえるNPO')); // office=ngo＋動物関連名称
+      // 名称のない公園も表示する（無料の公共施設のため）
+      expect(names, contains('名称未登録の公園'));
+      // 民間事業所（ねこカフェ・動物病院等）は対象外
+      expect(spots.any((s) => s.name.contains('ねこカフェ')), isFalse);
+      expect(spots.any((s) => s.name.contains('動物病院')), isFalse);
     });
 
     test('結果は現在地からの距離の昇順に並ぶ', () {
@@ -126,15 +134,15 @@ void main() {
       }
     });
 
-    test('種別判定できる（catcafe / petshop / vet）', () {
+    test('種別判定できる（park / shelter / npo）', () {
       final spots = parseOverpassResponse(overpassJson, 35.6812, 139.7671);
-      final cafe = spots.firstWhere((s) => s.name == 'A ねこカフェ丸の内');
-      expect(cafe.type, 'catcafe');
-      expect(cafe.isCatCafe, isTrue);
-      final pet = spots.firstWhere((s) => s.name == 'C ペットショップこねこ堂');
-      expect(pet.type, 'petshop');
-      final vet = spots.firstWhere((s) => s.name == 'D あいぶき動物病院');
-      expect(vet.type, 'vet');
+      final park = spots.firstWhere((s) => s.name == 'A 中央公園');
+      expect(park.type, 'park');
+      expect(park.isPark, isTrue);
+      final shelter = spots.firstWhere((s) => s.name == 'C どうぶつ愛護センター');
+      expect(shelter.type, 'shelter');
+      final npo = spots.firstWhere((s) => s.name == 'D ねこがえるNPO');
+      expect(npo.type, 'npo');
     });
 
     test('Googleマップ用URLはスポットの座標で組み立てられる', () {
@@ -145,16 +153,20 @@ void main() {
       expect(url, contains('${spot.lat},${spot.lng}'));
     });
 
-    test('Overpassクエリはねこカフェ・ペットショップ・動物病院を含む', () {
+    test('Overpassクエリは公園・動物愛護施設・動物関連NPOを含み民間事業所を含まない', () {
       final q = buildOverpassQuery(35.6812, 139.7671, radiusKm: 5);
-      expect(q, contains('"amenity"="cafe"'));
-      expect(q, contains('"shop"="pet"'));
-      expect(q, contains('"amenity"="veterinary"'));
+      expect(q, contains('"leisure"="park"'));
+      expect(q, contains('"amenity"="animal_shelter"'));
+      expect(q, contains('"office"~"ngo|charity|association"'));
+      // 民間事業所（ねこカフェ・ペットショップ・動物病院）は検索しない
+      expect(q, isNot(contains('"amenity"="cafe"')));
+      expect(q, isNot(contains('"shop"="pet"')));
+      expect(q, isNot(contains('"amenity"="veterinary"')));
       // relation を含む bbox クエリは重すぎて各サーバーが502/504を返すため除外
       expect(q, isNot(contains('relation')));
     });
 
-    test('猫スポットデータのキャッシュ変換（Map⇔CatSpot）は往復できる', () {
+    test('施設データのキャッシュ変換（Map⇔CatSpot）は往復できる', () {
       final spots = parseOverpassResponse(overpassJson, 35.6812, 139.7671);
       for (final s in spots) {
         final restored = catSpotFromMap(catSpotToMap(s));

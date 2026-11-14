@@ -7,8 +7,8 @@ import '../util/cat_spots.dart';
 import '../util/format.dart';
 import 'recruitment_create_sheet.dart';
 
-/// 「近くの猫スポット」タブ（ニーアキャットの特別機能）。
-/// 現在地の近くのねこカフェ・ペットショップ・動物病院を近い順に表示する。
+/// 「近くの施設」タブ（ニーアキャットの特別機能）。
+/// 現在地の近くの無料の公共施設（公園）・動物愛護施設・動物関連NPOを近い順に表示する。
 /// 各スポットはGoogleマップで開けるほか、その場所で直接募集
 /// （ねこカフェ・もふもふ会）をかけることができる。
 class SpotPage extends StatefulWidget {
@@ -60,7 +60,7 @@ class _SpotPageState extends State<SpotPage> {
                 children: [
                   const SizedBox(height: 4),
                   Text(
-                    '現在地の近くのねこカフェ・ペットショップ・動物病院を近い順に表示します。',
+                    '現在地の近くの無料の公共施設（公園）・動物愛護施設・動物関連NPOを近い順に表示します。',
                     style: theme.textTheme.bodySmall,
                   ),
                   if (snapshot.connectionState != ConnectionState.done &&
@@ -72,7 +72,7 @@ class _SpotPageState extends State<SpotPage> {
                           const CircularProgressIndicator(),
                           const SizedBox(height: 12),
                           Text(
-                            '周辺の猫スポットを検索しています…\n'
+                            '周辺の施設を検索しています…\n'
                             '初回は30秒〜1分ほどかかることがあります',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodySmall,
@@ -123,7 +123,7 @@ class _SpotPageState extends State<SpotPage> {
         children: [
           Icon(Icons.cloud_off, size: 40, color: Colors.grey.shade500),
           const SizedBox(height: 8),
-          Text('猫スポット情報を取得できませんでした。通信状況をご確認ください。',
+          Text('施設情報を取得できませんでした。通信状況をご確認ください。',
               style: theme.textTheme.bodySmall),
           const SizedBox(height: 8),
           OutlinedButton.icon(
@@ -143,7 +143,7 @@ class _SpotPageState extends State<SpotPage> {
         children: [
           Icon(Icons.pets, size: 40, color: Colors.grey.shade500),
           const SizedBox(height: 8),
-          Text('近くに猫スポットが見つかりませんでした。',
+          Text('近くに施設が見つかりませんでした。',
               style: theme.textTheme.bodySmall),
         ],
       ),
@@ -227,26 +227,26 @@ class _SpotPageState extends State<SpotPage> {
 /// スポット種別の表示ラベル
 String spotTypeLabel(String type) {
   switch (type) {
-    case 'catcafe':
-      return 'ねこカフェ';
-    case 'petshop':
-      return 'ペットショップ';
-    case 'vet':
-      return '動物病院';
+    case 'park':
+      return '公園';
+    case 'shelter':
+      return '動物愛護施設';
+    case 'npo':
+      return '動物関連NPO';
   }
-  return '猫スポット';
+  return '施設';
 }
 
 /// スポット種別のアイコン
 IconData spotIcon(String type) {
   switch (type) {
-    case 'catcafe':
-      return Icons.local_cafe;
-    case 'petshop':
-      return Icons.storefront;
-    case 'vet':
-      return Icons.local_hospital;
+    case 'park':
+      return Icons.park;
+    case 'shelter':
+      return Icons.home_work;
+    case 'npo':
+      return Icons.volunteer_activism;
   }
-  return Icons.pets;
+  return Icons.place;
 }
 

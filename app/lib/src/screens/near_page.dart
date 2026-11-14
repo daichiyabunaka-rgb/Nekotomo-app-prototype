@@ -17,7 +17,7 @@ import 'widgets.dart';
 /// [募集] アクティブな募集を距離順に表示（FR-2-2）
 /// [人] 近くの一般ユーザーのアイコンが並ぶ（要望: 位置情報から近くの一般ユーザー）
 /// [店] 近くのビジネスユーザーのアイコンが並ぶ（要望: 近くのビジネスユーザー）
-/// [猫スポット] 近くのねこカフェ・ペットショップ・動物病院を探す（Googleマップ連携）
+/// [施設] 近くの無料の公共施設（公園）・動物愛護施設・動物関連NPOを探す（Googleマップ連携）
 class NearPage extends StatefulWidget {
   const NearPage({super.key});
 
@@ -97,8 +97,8 @@ class _NearPageState extends State<NearPage> {
                       label: Text('店')),
                   ButtonSegment(
                       value: NearTab.spot,
-                      icon: Icon(Icons.pets_outlined),
-                      label: Text('猫スポット')),
+                      icon: Icon(Icons.park_outlined),
+                      label: Text('施設')),
                 ],
                 selected: {_tab},
                 onSelectionChanged: (s) => setState(() => _tab = s.first),
