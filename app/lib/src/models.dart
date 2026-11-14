@@ -101,7 +101,7 @@ const List<MockLocation> mockLocations = [
 class CatSpot {
   final String osmId; // 例: 'way/12345'
   final String name;
-  final String type; // 'park'（公園） | 'shelter'（動物愛護施設） | 'npo'（動物関連NPO）
+  final String type; // 'shelter'（動物愛護施設） | 'npo'（動物関連NPO） | 'vet'（動物病院）
   final double lat;
   final double lng;
   final double distanceKm; // 現在地からの距離
@@ -117,7 +117,7 @@ class CatSpot {
     this.openingHours,
   });
 
-  bool get isPark => type == 'park';
+  bool get isShelter => type == 'shelter';
 }
 
 class AppUser {

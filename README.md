@@ -23,7 +23,7 @@
 - 募集（ねこカフェ / もふもふ会 / お散歩・お出かけ。1〜3時間の期限付きで「今から」感を出す）
 - 1:1のDM
 - コミュニティ・イベント（誰でも作成・参加でき、参加するとチャットが始まる）
-- **近くの猫スポット（特別機能）**: 現在地周辺の OpenStreetMap（Overpass API）から、ねこカフェ・ペットショップ・動物病院を一覧表示。Googleマップで開く・その場で募集（もふもふ会など）がワンタップで可能
+- **近くの施設（特別機能）**: 現在地周辺の OpenStreetMap（Overpass API）から、動物愛護施設・動物関連NPO・動物病院を一覧表示。Googleマップで開く・その場で募集（もふもふ会など）がワンタップで可能。公園やねこカフェ・ペットショップなどの小売・飲食は対象外
 - **近くの保護猫・迷い猫（特別機能）**: 近くで見つけた猫ちゃん・いなくなった猫ちゃんの情報を近隣で共有。掲載者へのDM・解決済み機能付き。譲渡・里親探しは行わず、自治体・保護団体の正式な手続きへ誘導
 - 興味カテゴリ（ねこカフェ / 愛猫撮影 / TNR活動 など）はDBを通じて全ユーザーに共有される
 - アイコン画像の投稿（Supabase Storage の公開バケットに自動リサイズ後アップロード。端末内フォールバック付き）
@@ -41,9 +41,9 @@ docs/
   supabase_multiapp_v2_cross_app.sql   ともつく！連携（cross_app_visible。0003相当）
   supabase_nekotomo_cats.sql           保護猫テーブル・投稿写真バケットの作成（ニーアキャット用・未適用）
 app/                            Flutter アプリ（Android / iOS / Web 対応）
-  lib/src/screens/             画面（near_page に 募集/人/店舗/猫スポット の4セクション）
+  lib/src/screens/             画面（near_page に 募集/人/店舗/施設 の4セクション）
   lib/src/services/            認証・位置情報・Supabase Data Access（app_id フィルタ・RLSを前提）
-  lib/src/util/cat_spots.dart   近くの猫スポット取得（Overpass API・ミラーフォールバック・キャッシュ・GoogleマップURL生成）
+  lib/src/util/cat_spots.dart   近くの施設取得（Overpass API・ミラーフォールバック・キャッシュ・GoogleマップURL生成）
   lib/src/mock/                 モックユーザー・シード募集（GPS現在地からの相対距離で配置）
 tools/make_icon.py              ランチャーアイコン生成スクリプト（Python + Pillow。フラットデザインの猫）
 ```
@@ -74,7 +74,7 @@ dart-define を付けない場合はローカルモック（端末内データ�
 2. **事前に適用が必要なマイグレーション**: `docs/supabase_multiapp_migration.sql` と `docs/supabase_multiapp_v2_cross_app.sql`（tomotsuku-memo-share の 0002 / 0003 と同一内容）。
 3. **ニーアキャット用**: `docs/supabase_nekotomo_cats.sql` を Supabase Dashboard の SQL Editor で適用してください（protected_cats テーブルと protected-cat-photos バケット）。
 4. **アイコン投稿バケット**: `icons` バケットは犬とも！と共通です（ユーザーごとの `UUID/nekotomo/` 名前空間に配置されるため使い回せます）。
-5. **猫スポット検索**: OpenStreetMap（Overpass API）を利用。APIキー不要・User-Agent必須。ねこカフェは店名とのマッチングで判定するため、OSM でのデータ整備が進むほど精度が上がります。
+5. **施設検索**: OpenStreetMap（Overpass API）を利用。APIキー不要・User-Agent必須。動物関連NPOは名称マッチ（ねこ/猫/動物など）で判定するため、OSM でのデータ整備が進むほど精度が上がります。
 6. **画像モデレーション**: アイコンの動物検証等は本リリース版で実装予定（犬とも！の Human/Animal 判定相当）。
 
 ## 運用

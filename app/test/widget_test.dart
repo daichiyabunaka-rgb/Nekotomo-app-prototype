@@ -99,30 +99,30 @@ void main() {
      "tags": {"leisure": "park", "name": "A 中央公園"}},
     {"type": "way", "id": 203,
      "center": {"lat": 35.67, "lon": 139.76},
-     "tags": {"amenity": "animal_shelter", "name": "C どうぶつ愛護センター"}},
+     "tags": {"amenity": "animal_shelter", "name": "B どうぶつ愛護センター"}},
     {"type": "node", "id": 204, "lat": 35.66, "lon": 139.75,
-     "tags": {"office": "ngo", "name": "D ねこがえるNPO"}},
+     "tags": {"office": "ngo", "name": "C ねこがえるNPO"}},
     {"type": "node", "id": 205, "lat": 35.68, "lon": 139.77,
      "tags": {"leisure": "park"}},
     {"type": "node", "id": 206, "lat": 35.69, "lon": 139.77,
-     "tags": {"amenity": "cafe", "name": "B ねこカフェ丸の内"}},
+     "tags": {"amenity": "veterinary", "name": "D あいぶき動物病院"}},
     {"type": "node", "id": 207, "lat": 35.69, "lon": 139.78,
-     "tags": {"amenity": "veterinary", "name": "E あいぶき動物病院"}}
+     "tags": {"amenity": "cafe", "name": "E ねこカフェ丸の内"}}
   ]
 }
 ''';
 
-    test('実在データのパース: 公園・動物愛護施設・動物関連NPOを種別判定する', () {
+    test('実在データのパース: 動物愛護施設・動物関連NPO・動物病院を種別判定する', () {
       final spots = parseOverpassResponse(overpassJson, 35.6812, 139.7671);
       final names = spots.map((s) => s.name).toList();
-      expect(names, contains('A 中央公園')); // leisure=park → 公園
-      expect(names, contains('C どうぶつ愛護センター')); // amenity=animal_shelter
-      expect(names, contains('D ねこがえるNPO')); // office=ngo＋動物関連名称
-      // 名称のない公園も表示する（無料の公共施設のため）
-      expect(names, contains('名称未登録の公園'));
-      // 民間事業所（ねこカフェ・動物病院等）は対象外
+      expect(names, contains('B どうぶつ愛護センター')); // amenity=animal_shelter
+      expect(names, contains('C ねこがえるNPO')); // office=ngo＋動物関連名称
+      expect(names, contains('D あいぶき動物病院')); // amenity=veterinary
+      // 公園など猫と直接関係ない公共施設は対象外
+      expect(spots.any((s) => s.name.contains('公園')), isFalse);
+      expect(spots.any((s) => s.name.contains('名称未登録')), isFalse);
+      // 民間の小売・飲食（ねこカフェ・ペットショップ等）は対象外
       expect(spots.any((s) => s.name.contains('ねこカフェ')), isFalse);
-      expect(spots.any((s) => s.name.contains('動物病院')), isFalse);
     });
 
     test('結果は現在地からの距離の昇順に並ぶ', () {
@@ -134,15 +134,15 @@ void main() {
       }
     });
 
-    test('種別判定できる（park / shelter / npo）', () {
+    test('種別判定できる（shelter / npo / vet）', () {
       final spots = parseOverpassResponse(overpassJson, 35.6812, 139.7671);
-      final park = spots.firstWhere((s) => s.name == 'A 中央公園');
-      expect(park.type, 'park');
-      expect(park.isPark, isTrue);
-      final shelter = spots.firstWhere((s) => s.name == 'C どうぶつ愛護センター');
+      final shelter = spots.firstWhere((s) => s.name == 'B どうぶつ愛護センター');
       expect(shelter.type, 'shelter');
-      final npo = spots.firstWhere((s) => s.name == 'D ねこがえるNPO');
+      expect(shelter.isShelter, isTrue);
+      final npo = spots.firstWhere((s) => s.name == 'C ねこがえるNPO');
       expect(npo.type, 'npo');
+      final vet = spots.firstWhere((s) => s.name == 'D あいぶき動物病院');
+      expect(vet.type, 'vet');
     });
 
     test('Googleマップ用URLはスポットの座標で組み立てられる', () {
@@ -153,15 +153,15 @@ void main() {
       expect(url, contains('${spot.lat},${spot.lng}'));
     });
 
-    test('Overpassクエリは公園・動物愛護施設・動物関連NPOを含み民間事業所を含まない', () {
+    test('Overpassクエリは動物愛護施設・動物関連NPO・動物病院を含み公園や小売飲食を含まない', () {
       final q = buildOverpassQuery(35.6812, 139.7671, radiusKm: 5);
-      expect(q, contains('"leisure"="park"'));
       expect(q, contains('"amenity"="animal_shelter"'));
       expect(q, contains('"office"~"ngo|charity|association"'));
-      // 民間事業所（ねこカフェ・ペットショップ・動物病院）は検索しない
+      expect(q, contains('"amenity"="veterinary"'));
+      // 公園・民間の小売・飲食（ねこカフェ・ペットショップ等）は検索しない
+      expect(q, isNot(contains('"leisure"="park"')));
       expect(q, isNot(contains('"amenity"="cafe"')));
       expect(q, isNot(contains('"shop"="pet"')));
-      expect(q, isNot(contains('"amenity"="veterinary"')));
       // relation を含む bbox クエリは重すぎて各サーバーが502/504を返すため除外
       expect(q, isNot(contains('relation')));
     });

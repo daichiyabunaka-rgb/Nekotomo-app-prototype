@@ -8,7 +8,7 @@ import '../util/format.dart';
 import 'recruitment_create_sheet.dart';
 
 /// 「近くの施設」タブ（ニーアキャットの特別機能）。
-/// 現在地の近くの無料の公共施設（公園）・動物愛護施設・動物関連NPOを近い順に表示する。
+/// 現在地の近くの動物愛護施設・動物関連NPO・動物病院を近い順に表示する。
 /// 各スポットはGoogleマップで開けるほか、その場所で直接募集
 /// （ねこカフェ・もふもふ会）をかけることができる。
 class SpotPage extends StatefulWidget {
@@ -60,7 +60,7 @@ class _SpotPageState extends State<SpotPage> {
                 children: [
                   const SizedBox(height: 4),
                   Text(
-                    '現在地の近くの無料の公共施設（公園）・動物愛護施設・動物関連NPOを近い順に表示します。',
+                    '現在地の近くの動物愛護施設・動物関連NPO・動物病院を近い順に表示します。',
                     style: theme.textTheme.bodySmall,
                   ),
                   if (snapshot.connectionState != ConnectionState.done &&
@@ -227,12 +227,12 @@ class _SpotPageState extends State<SpotPage> {
 /// スポット種別の表示ラベル
 String spotTypeLabel(String type) {
   switch (type) {
-    case 'park':
-      return '公園';
     case 'shelter':
       return '動物愛護施設';
     case 'npo':
       return '動物関連NPO';
+    case 'vet':
+      return '動物病院';
   }
   return '施設';
 }
@@ -240,12 +240,12 @@ String spotTypeLabel(String type) {
 /// スポット種別のアイコン
 IconData spotIcon(String type) {
   switch (type) {
-    case 'park':
-      return Icons.park;
     case 'shelter':
       return Icons.home_work;
     case 'npo':
       return Icons.volunteer_activism;
+    case 'vet':
+      return Icons.local_hospital;
   }
   return Icons.place;
 }

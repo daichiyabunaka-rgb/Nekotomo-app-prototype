@@ -8,12 +8,13 @@ import 'format.dart';
 
 /// 「近くの施設を探す」機能のデータ層。
 /// OpenStreetMap の Overpass API で現在地周辺の
-/// **無料の公共施設・動物関連のNPO法人**を取得する。
-/// - 公園（leisure=park）: 猫同伴のお散歩・お出かけに使える無料の公共施設
+/// **猫・動物関連の施設**を取得する。
 /// - 動物愛護センター・シェルター（amenity=animal_shelter）
 /// - 動物関連のNPO法人（office=ngo/charity/association のうち
 ///   名称に「ねこ/ネコ/猫/動物/cat」を含むもの）
-/// - ねこカフェ・ペットショップ・動物病院などの**民間事業所は対象外**
+/// - 動物病院（amenity=veterinary。医療施設として案内）
+/// - 公園など猫と直接関係ない公共施設・ねこカフェ・ペットショップなどの
+///   **小売・飲食の民間事業所は対象外**
 /// - nodes/waysのみ取得（relationsを含むbboxクエリは重すぎて各サーバーが
 ///   502/504を返すため）
 /// - 取得には30〜60秒ほどかかることがあるため、同一場所なら
@@ -40,7 +41,7 @@ const Duration spotCacheTtl = Duration(minutes: 30);
 /// 必ずアプリ名入り UA を送る
 Map<String, String> get spotHttpHeaders => {
       'User-Agent':
-          'Nekotomo/1.0 (Android; public facility search; +https://github.com/daichiyabunaka-rgb/Nekotomo-app-prototype)',
+          'Nekotomo/1.0 (Android; animal facility search; +https://github.com/daichiyabunaka-rgb/Nekotomo-app-prototype)',
       'Accept': 'application/json',
     };
 
@@ -58,12 +59,12 @@ String buildOverpassQuery(double lat, double lng, {double radiusKm = searchRadiu
   const animalNameRegex = 'ねこ|ネコ|猫|動物|cat|Cat|CAT|animal|Animal';
   return '[out:json][timeout:25];'
       '('
-      'node["leisure"="park"]($bbox);'
-      'way["leisure"="park"]($bbox);'
       'node["amenity"="animal_shelter"]($bbox);'
       'way["amenity"="animal_shelter"]($bbox);'
       'node["office"~"ngo|charity|association"]["name"~"$animalNameRegex"]($bbox);'
       'way["office"~"ngo|charity|association"]["name"~"$animalNameRegex"]($bbox);'
+      'node["amenity"="veterinary"]($bbox);'
+      'way["amenity"="veterinary"]($bbox);'
       ');'
       'out center tags;';
 }
@@ -217,18 +218,18 @@ List<CatSpot> parseOverpassResponse(String body, double lat, double lng) {
     if (elementId == null) continue;
     final osmType = (e['type'] as String?) ?? '';
     final tags = (e['tags'] as Map?)?.cast<String, String>() ?? const {};
-    // スポット種別の判定（無料の公共施設・動物関連NPOのみ。民間事業所は対象外）
+    // スポット種別の判定（猫・動物関連の施設のみ。公園・小売飲食の民間事業所は対象外）
     final rawName = tags['name'] ?? '';
     final String type;
-    if (tags['leisure'] == 'park') {
-      type = 'park';
-    } else if (tags['amenity'] == 'animal_shelter') {
+    if (tags['amenity'] == 'animal_shelter') {
       type = 'shelter';
     } else if ((tags['office'] == 'ngo' ||
                 tags['office'] == 'charity' ||
                 tags['office'] == 'association') &&
         animalNameHasMatch(rawName)) {
       type = 'npo';
+    } else if (tags['amenity'] == 'veterinary') {
+      type = 'vet';
     } else {
       continue;
     }
@@ -241,15 +242,9 @@ List<CatSpot> parseOverpassResponse(String body, double lat, double lng) {
       pLng = (center['lon'] as num?)?.toDouble() ?? pLng;
     }
     if (pLat == null || pLng == null) continue;
-    // 公園は名称が無くても表示する（無料の公共施設のため）。それ以外は要名称
-    final String? name;
-    if (rawName.isNotEmpty) {
-      name = rawName;
-    } else if (type == 'park') {
-      name = '名称未登録の公園';
-    } else {
-      continue;
-    }
+    // すべての種別で名称が必須（名称のない施設は対象外）
+    if (rawName.isEmpty) continue;
+    final name = rawName;
     spots.add(CatSpot(
       osmId: '$osmType/$elementId',
       name: name,
