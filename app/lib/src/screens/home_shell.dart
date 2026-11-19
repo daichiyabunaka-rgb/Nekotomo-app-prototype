@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'cat_reports_page.dart';
 import 'communities_page.dart';
 import 'explore_page.dart';
 import 'my_page.dart';
@@ -7,7 +8,7 @@ import 'near_page.dart';
 import 'protected_cats_page.dart';
 import 'rooms_page.dart';
 
-/// ホーム: 近く / 部屋 / コミュニティ / 保護猫 / 探す / マイページ（仕様書 8 章参照）
+/// ホーム: 近く / 部屋 / コミュニティ / 近況報告 / 保護猫 / 探す / マイページ（仕様書 8 章参照）
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -27,6 +28,7 @@ class _HomeShellState extends State<HomeShell> {
           NearPage(),
           RoomsPage(),
           CommunitiesPage(),
+          CatReportsPage(),
           ProtectedCatsPage(),
           ExplorePage(),
           MyPage(),
@@ -50,6 +52,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.groups_outlined),
             selectedIcon: Icon(Icons.groups),
             label: 'コミュニティ',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.photo_camera_outlined),
+            selectedIcon: Icon(Icons.photo_camera),
+            label: '近況報告',
           ),
           NavigationDestination(
             icon: Icon(Icons.pets_outlined),

@@ -181,7 +181,7 @@ void main() {
   });
 
   group('端末内スナップショット（モック永続化）', () {
-    test('募集・保護猫・コミュニティは保存用Mapとの往復ができる', () {
+    test('募集・保護猫・近況報告・コミュニティは保存用Mapとの往復ができる', () {
       final now = DateTime(2026, 3, 1, 12, 0);
       final rec = Recruitment(
         id: 'r-1',
@@ -218,6 +218,24 @@ void main() {
       expect(restoredCat!.kind, 'lost');
       expect(restoredCat.photoPath, cat.photoPath);
       expect(restoredCat.createdAt, cat.createdAt);
+
+      final report = CatReport(
+        id: 'cr-1',
+        posterId: 'me',
+        kind: 'shoot',
+        itemDescription: '段ボールで昼寝する姿を撮影しました',
+        areaName: 'テスト駅',
+        detail: '自宅の窓辺で撮影',
+        lat: 35.0,
+        lng: 139.0,
+        createdAt: now,
+        photoPath: '/data/user/0/cat_photos/cat_report_1.jpg',
+      );
+      final restoredReport = persist.catReportFromMap(
+          persist.catReportToMap(report));
+      expect(restoredReport!.kind, 'shoot');
+      expect(restoredReport.photoPath, report.photoPath);
+      expect(restoredReport.createdAt, report.createdAt);
 
       final com = Community(
         id: 'c-1',
@@ -282,9 +300,32 @@ void main() {
         lng: 139.0,
         createdAt: now,
       );
+      final othersReport = CatReport(
+        id: 'cr-other',
+        posterId: 'someone-else',
+        kind: 'shoot',
+        itemDescription: '他人の投稿',
+        areaName: 'どこか',
+        detail: '',
+        lat: 35.0,
+        lng: 139.0,
+        createdAt: now,
+      );
+      final myReport = CatReport(
+        id: 'cr-mine',
+        posterId: 'me',
+        kind: 'shoot',
+        itemDescription: '自分の投稿',
+        areaName: 'どこか',
+        detail: '',
+        lat: 35.0,
+        lng: 139.0,
+        createdAt: now,
+      );
       final snapshot = {
         'recruitments': [rec, expired].map(persist.recruitmentToMap).toList(),
         'protectedCats': [othersCat, myCat].map(persist.protectedCatToMap).toList(),
+        'catReports': [othersReport, myReport].map(persist.catReportToMap).toList(),
       };
       final pruned = persist.pruneSnapshotToOwner(snapshot, 'me');
       final recIds =
@@ -293,6 +334,9 @@ void main() {
       final catIds =
           (pruned['protectedCats'] as List).map((e) => e['id'] as String).toList();
       expect(catIds, ['pd-mine']); // 他人の投稿は捨てる
+      final reportIds =
+          (pruned['catReports'] as List).map((e) => e['id'] as String).toList();
+      expect(reportIds, ['cr-mine']); // 他人の投稿は捨てる
     });
   });
 
@@ -724,6 +768,45 @@ void main() {
       await state.resolveProtectedCat(created.id);
       expect(
           state.protectedCats.any((p) => p.id == created.id), isFalse);
+    });
+
+    test('近況報告: シードは近い順に並び、撮影・つぶやき・イベントを含む', () {
+      final state = AppState();
+      state.attachUser(_testUser(state), reseed: true);
+      final reports = state.catReports;
+      expect(reports, isNotEmpty);
+      expect(reports.any((p) => p.isShoot), isTrue);
+      expect(reports.any((p) => p.isPost), isTrue);
+      expect(reports.any((p) => p.isEvent), isTrue);
+      final me = state.me!;
+      double km(CatReport p) => haversineKm(me.lat, me.lng, p.lat, p.lng);
+      for (var i = 1; i < reports.length; i++) {
+        expect(km(reports[i - 1]), lessThanOrEqualTo(km(reports[i])));
+      }
+      for (final p in reports) {
+        // 相対配置されているので全シードが現在地の近くにある
+        expect(km(p), lessThan(6.0));
+        expect(state.catReportDistanceLabel(p), isNotEmpty);
+      }
+    });
+
+    test('近況報告: 登録して一覧に出し、完了で消える', () async {
+      final state = AppState();
+      state.attachUser(_testUser(state), reseed: true);
+      final created = await state.registerCatReport(
+        kind: 'post',
+        itemDescription: 'テストつぶやき',
+        areaName: 'テストねこカフェ',
+        detail: '愛猫の近況です',
+        photoPath: '/data/cat_photos/cat_report_1.jpg',
+      );
+      expect(created.isPost, isTrue);
+      expect(created.photoPath, '/data/cat_photos/cat_report_1.jpg');
+      expect(
+          state.catReports.any((p) => p.id == created.id), isTrue);
+      await state.closeCatReport(created.id);
+      expect(
+          state.catReports.any((p) => p.id == created.id), isFalse);
     });
   });
 

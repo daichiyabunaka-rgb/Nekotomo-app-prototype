@@ -202,6 +202,41 @@ ProtectedCat? protectedCatFromMap(Map<String, dynamic> m) {
   }
 }
 
+Map<String, dynamic> catReportToMap(CatReport p) => {
+      'id': p.id,
+      'posterId': p.posterId,
+      'kind': p.kind,
+      'itemDescription': p.itemDescription,
+      'areaName': p.areaName,
+      'detail': p.detail,
+      'photoPath': p.photoPath,
+      'lat': p.lat,
+      'lng': p.lng,
+      'createdAt': p.createdAt.toIso8601String(),
+      'closed': p.closed,
+    };
+
+CatReport? catReportFromMap(Map<String, dynamic> m) {
+  try {
+    final report = CatReport(
+      id: m['id'] as String,
+      posterId: m['posterId'] as String,
+      kind: m['kind'] as String,
+      itemDescription: m['itemDescription'] as String,
+      areaName: m['areaName'] as String,
+      detail: m['detail'] as String,
+      photoPath: m['photoPath'] as String?,
+      lat: (m['lat'] as num).toDouble(),
+      lng: (m['lng'] as num).toDouble(),
+      createdAt: DateTime.parse(m['createdAt'] as String),
+      closed: m['closed'] as bool? ?? false,
+    );
+    return report;
+  } catch (_) {
+    return null;
+  }
+}
+
 /// 保存済みスナップショットを「自分のもの」だけに刈り込む。
 /// 別アカウントで同じ端末からログインした場合に前アカウントの
 /// データが混ざらないための防護。
@@ -259,6 +294,12 @@ Map<String, dynamic> pruneSnapshotToOwner(
       .where((d) => d != null && d.reporterId == myId)
       .cast<ProtectedCat>()
       .toList();
+  final catReports = ((snapshot['catReports'] as List?) ?? const [])
+      .map((e) => e as Map<String, dynamic>)
+      .map(catReportFromMap)
+      .where((d) => d != null && d.posterId == myId)
+      .cast<CatReport>()
+      .toList();
   return {
     'recruitments': recs.map(recruitmentToMap).toList(),
     'applications': apps.map(joinApplicationToMap).toList(),
@@ -267,5 +308,6 @@ Map<String, dynamic> pruneSnapshotToOwner(
     'communities': communities.map(communityToMap).toList(),
     'events': events.map(communityEventToMap).toList(),
     'protectedCats': cats.map(protectedCatToMap).toList(),
+    'catReports': catReports.map(catReportToMap).toList(),
   };
 }

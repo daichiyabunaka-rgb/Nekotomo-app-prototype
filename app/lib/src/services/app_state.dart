@@ -297,6 +297,7 @@ class AppState extends ChangeNotifier {
     anchorLng = lng;
     _rebuildMockUsers();
     _replaceMockProtectedCatSeeds();
+    _replaceMockCatReports();
     if (me != null) {
       // ビジネスユーザーは店舗の位置（プロフィール位置）を GPS で
       // 更新しない（登録時に設定した位置に固定）
@@ -357,6 +358,7 @@ class AppState extends ChangeNotifier {
     }
     _seedMockCommunities();
     _seedMockProtectedCats();
+    _seedMockCatReports();
   }
 
   /// ログアウト
@@ -433,6 +435,10 @@ class AppState extends ChangeNotifier {
           .where((p) => p.reporterId == me!.id && !p.id.startsWith('pd-seed-'))
           .map(persist.protectedCatToMap)
           .toList(),
+      'catReports': _catReports
+          .where((p) => p.posterId == me!.id && !p.id.startsWith('cr-seed-'))
+          .map(persist.catReportToMap)
+          .toList(),
     };
   }
 
@@ -497,6 +503,11 @@ class AppState extends ChangeNotifier {
         ..addAll(((pruned['protectedCats'] as List?) ?? const [])
             .map((e) => persist.protectedCatFromMap(e as Map<String, dynamic>))
             .whereType<ProtectedCat>());
+      _catReports
+        ..clear()
+        ..addAll(((pruned['catReports'] as List?) ?? const [])
+            .map((e) => persist.catReportFromMap(e as Map<String, dynamic>))
+            .whereType<CatReport>());
       return true;
     } catch (_) {
       // 壊れたスナップショットは無視して普通に初期化
@@ -595,6 +606,21 @@ class AppState extends ChangeNotifier {
           try {
             final reporter = await supabaseData.fetchProfileById(d.reporterId);
             if (reporter != null) _users[d.reporterId] = reporter;
+          } catch (_) {
+            // 無視
+          }
+        }
+      }
+      // 近況報告
+      final reports = await supabaseData.fetchCatReports(me!);
+      _catReports
+        ..clear()
+        ..addAll(reports);
+      for (final d in reports) {
+        if (!_users.containsKey(d.posterId)) {
+          try {
+            final reporter = await supabaseData.fetchProfileById(d.posterId);
+            if (reporter != null) _users[d.posterId] = reporter;
           } catch (_) {
             // 無視
           }
@@ -1465,6 +1491,109 @@ class AppState extends ChangeNotifier {
     if (_remote || !_useMockData) return;
     _protectedCats.removeWhere((p) => p.id.startsWith('pd-seed-'));
     _protectedCats.addAll(buildSeedProtectedCats(_now(), anchorLat, anchorLng));
+  }
+
+  // ------------------------------------------------------- cat reports
+
+  final List<CatReport> _catReports = [];
+
+  /// 解決済みとブロック済みユーザーの投稿を除いた近況報告の一覧
+  /// （距離近い順）
+  List<CatReport> get catReports {
+    if (me == null) return const [];
+    return _catReports
+        .where((p) => !p.closed && !isBlocked(p.posterId))
+        .toList()
+      ..sort((a, b) =>
+          _catReportDistance(a).compareTo(_catReportDistance(b)));
+  }
+
+  double _catReportDistance(CatReport p) {
+    if (me == null) return double.infinity;
+    return haversineKm(me!.lat, me!.lng, p.lat, p.lng);
+  }
+
+  /// 登録までの粗い距離バンド
+  String catReportDistanceLabel(CatReport p) {
+    final km = _catReportDistance(p);
+    return km.isFinite ? distanceLabel(km) : '';
+  }
+
+  /// 近況報告（shoot / post / event）を登録する
+  Future<CatReport> registerCatReport({
+    required String kind,
+    required String itemDescription,
+    required String areaName,
+    required String detail,
+    String? photoPath,
+  }) async {
+    if (_remote) {
+      // アップロード失敗で端末内パス（http で始まらない）が返ってきた場合、
+      // 他の端末から見えないため photoPath として保存しない
+      final effectivePhoto = (photoPath != null &&
+              photoPath.isNotEmpty &&
+              photoPath.startsWith('http'))
+          ? photoPath
+          : null;
+      final created = await supabaseData.createCatReport(
+        kind: kind,
+        itemDescription: itemDescription,
+        areaName: areaName,
+        detail: detail,
+        photoPath: effectivePhoto,
+        lat: me!.lat,
+        lng: me!.lng,
+      );
+      _catReports.insert(0, created);
+      notifyListeners();
+      return created;
+    }
+    final item = CatReport(
+      id: 'cr-${_seq++}',
+      posterId: me!.id,
+      kind: kind,
+      itemDescription: itemDescription,
+      areaName: areaName,
+      detail: detail,
+      photoPath: photoPath,
+      lat: me!.lat,
+      lng: me!.lng,
+      createdAt: _now(),
+    );
+    _catReports.insert(0, item);
+    notifyListeners();
+    return item;
+  }
+
+  /// 報告を完了にする（一覧から外す）
+  Future<void> closeCatReport(String id) async {
+    for (final p in _catReports) {
+      if (p.id == id) {
+        p.closed = true;
+        break;
+      }
+    }
+    notifyListeners();
+    if (_remote) {
+      try {
+        await supabaseData.closeCatReport(id);
+      } catch (_) {
+        // 無視（再取得で同期される）
+      }
+    }
+  }
+
+  /// モック: シードの近況報告を現在地周囲に配置する
+  void _seedMockCatReports() {
+    if (_catReports.any((p) => p.id.startsWith('cr-seed-'))) return;
+    _catReports.addAll(buildSeedCatReports(_now(), anchorLat, anchorLng));
+  }
+
+  /// 実 GPS で現在地が変わったら、シードの投稿も作り直す（開発ビルドのみ）
+  void _replaceMockCatReports() {
+    if (_remote || !_useMockData) return;
+    _catReports.removeWhere((p) => p.id.startsWith('cr-seed-'));
+    _catReports.addAll(buildSeedCatReports(_now(), anchorLat, anchorLng));
   }
 
   // ------------------------------------------------------------ rooms / DM

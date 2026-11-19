@@ -367,6 +367,81 @@ List<ProtectedCat> buildSeedProtectedCats(
   ];
 }
 
+/// ---------- 近況報告のシード（anchor＝現在地からの相対距離で配置） ----------
+
+class _CatReportSeedSpec {
+  final String id;
+  final String posterId;
+  final String kind;
+  final String itemDescription;
+  final String areaName;
+  final String detail;
+  final double northKm;
+  final double eastKm;
+  final Duration age;
+  const _CatReportSeedSpec(this.id, this.posterId, this.kind,
+      this.itemDescription, this.areaName, this.detail, this.northKm,
+      this.eastKm, this.age);
+}
+
+const List<_CatReportSeedSpec> _catReportSeedSpecs = [
+  _CatReportSeedSpec(
+    'cr-seed-1',
+    'u-noraneko-ken',
+    'shoot',
+    'うちの猫が段ボールで昼寝している姿を撮影しました',
+    '自宅の窓辺',
+    '日向ぼっこが好きで、いつも段ボールが定位置です。'
+        '同じ猫好きさんの写真も見てみたいです。',
+    0.3,
+    -0.6,
+    Duration(hours: 2),
+  ),
+  _CatReportSeedSpec(
+    'cr-seed-2',
+    'u-munchkin-moka',
+    'post',
+    '今週末はねこカフェに行く予定です',
+    '駅東側の商店街',
+    '新しくできたねこカフェに行ってみます。'
+        'おすすめのねこカフェがあったら教えてください。',
+    -0.2,
+    0.8,
+    Duration(hours: 5),
+  ),
+  _CatReportSeedSpec(
+    'cr-seed-3',
+    'u-multicat-sara',
+    'event',
+    '猫好きの集まりに参加してきました',
+    '中央公園 周辺',
+    '初めての参加でしたが、猫の話で盛り上がって'
+        '楽しかったです。次回も参加予定です。',
+    -0.9,
+    -0.3,
+    Duration(hours: 26),
+  ),
+];
+
+List<CatReport> buildSeedCatReports(
+    DateTime now, double anchorLat, double anchorLng) {
+  final cos = (anchorLat * math.pi / 180.0).abs().clamp(0.01, 1.0);
+  return [
+    for (final s in _catReportSeedSpecs)
+      CatReport(
+        id: s.id,
+        posterId: s.posterId,
+        kind: s.kind,
+        itemDescription: s.itemDescription,
+        areaName: s.areaName,
+        detail: s.detail,
+        lat: anchorLat + s.northKm / _kmPerDegLat,
+        lng: anchorLng + s.eastKm / (_kmPerDegLat * cos),
+        createdAt: now.subtract(s.age),
+      ),
+  ];
+}
+
 /// モックの返信候補（デモの自動応答に使う。本開発では Supabase Realtime に置換）
 const List<String> mockReplies = [
   'よろしくお願いします！',
